@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
+import java.time.LocalDateTime;
 
 public class SmartBookApp {
     private final Scanner scanner = new Scanner(System.in);
@@ -40,9 +41,7 @@ public class SmartBookApp {
                     searchBooks();
                     break;
                 case 4:
-                    // implemented in later steps
-                    System.out.println("Fitur pembelian akan segera tersedia.");
-                    pause();
+                    buyBook();
                     break;
                 case 5:
                     // implemented in later steps
@@ -67,6 +66,10 @@ public class SmartBookApp {
     }
 
     private void showBooks() {
+        displayBooks(true);
+    }
+
+    private void displayBooks(boolean pauseAfter) {
         System.out.println("Daftar Buku:");
         if (books.isEmpty()) {
             System.out.println("Belum ada buku yang tersimpan.");
@@ -75,7 +78,9 @@ public class SmartBookApp {
                 System.out.println(book.formatForList());
             }
         }
-        pause();
+        if (pauseAfter) {
+            pause();
+        }
     }
 
     private void addBook() {
@@ -113,6 +118,57 @@ public class SmartBookApp {
             }
         }
         pause();
+    }
+
+    private void buyBook() {
+        if (books.isEmpty()) {
+            System.out.println("Belum ada buku tersedia untuk dibeli.");
+            pause();
+            return;
+        }
+
+        System.out.println("Beli Buku");
+        displayBooks(false);
+        String id = readNonEmpty("Masukkan ID buku: ").toUpperCase();
+        Book selected = findBookById(id);
+        if (selected == null) {
+            System.out.println("ID buku tidak ditemukan.");
+            pause();
+            return;
+        }
+        if (selected.getStock() == 0) {
+            System.out.println("Stok buku habis.");
+            pause();
+            return;
+        }
+
+        System.out.println("Buku dipilih: " + selected.formatForList());
+        int quantity = readInt("Jumlah yang dibeli: ", 1, selected.getStock());
+
+        double subtotal = selected.getPrice() * quantity;
+        double discount = quantity >= 3 ? subtotal * 0.05 : 0;
+        double total = Math.max(0, subtotal - discount);
+
+        selected.reduceStock(quantity);
+        String trxId = IdGenerator.nextTransactionId();
+        transactions.add(new Transaction(trxId, selected.getId(), selected.getTitle(), quantity, total, LocalDateTime.now()));
+
+        System.out.println("\nTransaksi berhasil!");
+        System.out.printf("Subtotal: %.0f%n", subtotal);
+        if (discount > 0) {
+            System.out.printf("Diskon: %.0f%n", discount);
+        }
+        System.out.printf("Total bayar: %.0f%n", total);
+        pause();
+    }
+
+    private Book findBookById(String id) {
+        for (Book book : books) {
+            if (book.getId().equalsIgnoreCase(id)) {
+                return book;
+            }
+        }
+        return null;
     }
 
     private String readNonEmpty(String prompt) {
