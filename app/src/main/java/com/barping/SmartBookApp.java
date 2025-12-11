@@ -37,9 +37,7 @@ public class SmartBookApp {
                     addBook();
                     break;
                 case 3:
-                    // implemented in later steps
-                    System.out.println("Fitur pencarian akan segera tersedia.");
-                    pause();
+                    searchBooks();
                     break;
                 case 4:
                     // implemented in later steps
@@ -93,6 +91,27 @@ public class SmartBookApp {
 
         System.out.println("\nBuku berhasil ditambahkan:");
         System.out.println(book.formatForList());
+        pause();
+    }
+
+    private void searchBooks() {
+        System.out.println("Cari Buku Berdasarkan Judul");
+        String keyword = readNonEmpty("Masukkan kata kunci: ").toLowerCase();
+        List<Book> results = new ArrayList<>();
+        for (Book book : books) {
+            if (book.getTitle().toLowerCase().contains(keyword)) {
+                results.add(book);
+            }
+        }
+
+        if (results.isEmpty()) {
+            System.out.println("Buku tidak ditemukan.");
+        } else {
+            System.out.println("Hasil pencarian:");
+            for (Book book : results) {
+                System.out.println(book.formatForList());
+            }
+        }
         pause();
     }
 
