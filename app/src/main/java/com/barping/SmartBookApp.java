@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.time.LocalDateTime;
+import java.util.InputMismatchException;
 
 public class SmartBookApp {
     private final Scanner scanner = new Scanner(System.in);
@@ -12,49 +13,60 @@ public class SmartBookApp {
     private final List<Transaction> transactions = new ArrayList<>();
 
     public static void main(String[] args) {
-        new SmartBookApp().run();
+        new SmartBookApp().menu();
     }
 
-    private void run() {
+    void menu() {
+        final String[] c = {"\u001B[1;32m", "\u001B[0m"};
+        Scanner input = new Scanner(System.in);
         Locale.setDefault(new Locale("id", "ID"));
         seedInitialBooks();
-        boolean running = true;
-        while (running) {
-            System.out.println("===== SMARTBOOK APP =====");
-            System.out.println("1. Lihat daftar buku");
-            System.out.println("2. Tambah buku baru");
-            System.out.println("3. Cari buku berdasarkan judul");
-            System.out.println("4. Beli buku");
-            System.out.println("5. Tampilkan riwayat transaksi");
-            System.out.println("6. Keluar dari program");
 
-            int choice = readInt("Pilihan Anda: ", 1, 6);
-            System.out.println();
-            switch (choice) {
-                case 1:
-                    showBooks();
+        System.out.printf("\n[i] Selamat datang di %sSmartBook App%s!\n\n", c[0], c[1]);
+        final String[] menu = {"Daftar", "Tambah", "Cari", "Beli", "Riwayat Transaksi", "Keluar"};
+        try {
+            while (true) {
+                System.out.println("Menu Aplikasi:");
+                for (int i = 0; i < menu.length; i++) {
+                    if (i < 4) {
+                        System.out.printf("[%s%d%s] %s Buku\n", c[0], (i + 1), c[1], menu[i]);
+                    } else {
+                        System.out.printf("[%s%d%s] %s\n", c[0], (i + 1), c[1], menu[i]);
+                    }
+                }
+                System.out.print("\nPilihan Anda: ");
+                byte option = input.nextByte();
+                System.out.println();
+                if (option == 6) {
+                    System.out.printf("[i] Terima kasih telah menggunakan %sSmartBook App!%s\n", c[0], c[1]);
                     break;
-                case 2:
-                    addBook();
-                    break;
-                case 3:
-                    searchBooks();
-                    break;
-                case 4:
-                    buyBook();
-                    break;
-                case 5:
-                    showTransactions();
-                    break;
-                case 6:
-                    running = false;
-                    break;
-                default:
-                    break;
+                }
+                switch (option) {
+                    case 1:
+                        showBooks();
+                        break;
+                    case 2:
+                        addBook();
+                        break;
+                    case 3:
+                        searchBooks();
+                        break;
+                    case 4:
+                        buyBook();
+                        break;
+                    case 5:
+                        showTransactions();
+                        break;
+                    default:
+                        System.out.println("[i] Invalid input: Out of range!\n");
+                        break;
+                }
             }
+        } catch (InputMismatchException e) {
+            System.out.printf("[i] Invalid input: Value must be a number from 1 to 6!\n");
         }
-        System.out.println("Terima kasih telah menggunakan SmartBook App!");
-        scanner.close();
+
+        input.close();
     }
 
     private void seedInitialBooks() {
@@ -68,36 +80,89 @@ public class SmartBookApp {
     }
 
     private void displayBooks(boolean pauseAfter) {
+        final String green = "\u001B[1;32m";
+        final String reset = "\u001B[0m";
+
         System.out.println("Daftar Buku:");
         if (books.isEmpty()) {
             System.out.println("Belum ada buku yang tersimpan.");
         } else {
+            System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
+            System.out.printf("| %sID%s       | %sJudul%s                                    | %sKategori%s         | %sHarga%s          | %sStok%s  |\n",
+                green, reset, green, reset, green, reset, green, reset, green, reset);
+            System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
             for (Book book : books) {
-                System.out.println(book.formatForList());
+                System.out.printf("| %-8s | %-40s | %-16s | %14s | %5d |\n",
+                    book.getId(),
+                    truncate(book.getTitle(), 40),
+                    truncate(book.getCategory(), 16),
+                    formatRupiah(book.getPrice()),
+                    book.getStock());
             }
+            System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
         }
         if (pauseAfter) {
             pause();
         }
     }
 
+    private String truncate(String text, int maxLength) {
+        if (text.length() <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength - 3) + "...";
+    }
+
     private void addBook() {
+        final String green = "\u001B[1;32m";
+        final String reset = "\u001B[0m";
+
         System.out.println("Tambah Buku Baru");
-        String title = readNonEmpty("Judul: ");
-        String category = readNonEmpty("Kategori: ");
-        double price = readDouble("Harga: ", 0);
-        int stock = readInt("Stok: ", 0, Integer.MAX_VALUE);
+        String title = readTitle("Judul: ");
+
+        // Cek apakah judul sudah ada
+        if (isTitleExists(title)) {
+            System.out.println("\n[!] Buku dengan judul tersebut sudah ada. Silakan gunakan judul yang berbeda.");
+            pause();
+            return;
+        }
+
+        String category = readCategory("Kategori: ");
+        double price = readDouble("Harga: ", 0, 999999999);
+        int stock = readInt("Stok: ", 0, 10000);
 
         String id = IdGenerator.nextBookId();
         Book book = new Book(id, title, category, price, stock);
         books.add(book);
 
         System.out.println("\nBuku berhasil ditambahkan:");
-        System.out.println(book.formatForList());
+        System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
+        System.out.printf("| %sID%s       | %sJudul%s                                    | %sKategori%s         | %sHarga%s          | %sStok%s  |\n",
+            green, reset, green, reset, green, reset, green, reset, green, reset);
+        System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
+        System.out.printf("| %-8s | %-40s | %-16s | %14s | %5d |\n",
+            book.getId(),
+            truncate(book.getTitle(), 40),
+            truncate(book.getCategory(), 16),
+            formatRupiah(book.getPrice()),
+            book.getStock());
+        System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
         pause();
     }
 
+    private boolean isTitleExists(String title) {
+        for (Book book : books) {
+            if (book.getTitle().equalsIgnoreCase(title)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void searchBooks() {
+        final String green = "\u001B[1;32m";
+        final String reset = "\u001B[0m";
+
         System.out.println("Cari Buku Berdasarkan Judul");
         String keyword = readNonEmpty("Masukkan kata kunci: ").toLowerCase();
         List<Book> results = new ArrayList<>();
@@ -111,9 +176,19 @@ public class SmartBookApp {
             System.out.println("Buku tidak ditemukan.");
         } else {
             System.out.println("Hasil pencarian:");
+            System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
+            System.out.printf("| %sID%s       | %sJudul%s                                    | %sKategori%s         | %sHarga%s          | %sStok%s  |\n",
+                green, reset, green, reset, green, reset, green, reset, green, reset);
+            System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
             for (Book book : results) {
-                System.out.println(book.formatForList());
+                System.out.printf("| %-8s | %-40s | %-16s | %14s | %5d |\n",
+                    book.getId(),
+                    truncate(book.getTitle(), 40),
+                    truncate(book.getCategory(), 16),
+                    formatRupiah(book.getPrice()),
+                    book.getStock());
             }
+            System.out.println("+----------+------------------------------------------+------------------+----------------+-------+");
         }
         pause();
     }
@@ -140,36 +215,57 @@ public class SmartBookApp {
             return;
         }
 
-        System.out.println("Buku dipilih: " + selected.formatForList());
+        System.out.println("Buku dipilih: " + selected.getTitle() + " - " + formatRupiah(selected.getPrice()));
         int quantity = readInt("Jumlah yang dibeli: ", 1, selected.getStock());
 
-        double subtotal = selected.getPrice() * quantity;
-        double discount = quantity >= 3 ? subtotal * 0.05 : 0;
-        double total = Math.max(0, subtotal - discount);
+        double total = selected.getPrice() * quantity;
 
         selected.reduceStock(quantity);
         String trxId = IdGenerator.nextTransactionId();
         transactions.add(new Transaction(trxId, selected.getId(), selected.getTitle(), quantity, total, LocalDateTime.now()));
 
         System.out.println("\nTransaksi berhasil!");
-        System.out.printf("Subtotal: %.0f%n", subtotal);
-        if (discount > 0) {
-            System.out.printf("Diskon: %.0f%n", discount);
-        }
-        System.out.printf("Total bayar: %.0f%n", total);
+        System.out.printf("Total bayar: %s%n", formatRupiah(total));
         pause();
     }
 
     private void showTransactions() {
+        final String green = "\u001B[1;32m";
+        final String reset = "\u001B[0m";
+
         System.out.println("Riwayat Transaksi:");
         if (transactions.isEmpty()) {
             System.out.println("Belum ada transaksi.");
         } else {
+            System.out.println("+------------+----------+------------------------------------------+--------+----------------+---------------------+");
+            System.out.printf("| %s%-10s%s | %s%-8s%s | %s%-40s%s | %s%-6s%s | %s%-14s%s | %s%-19s%s |\n",
+                green, "ID Trx", reset,
+                green, "ID Buku", reset,
+                green, "Judul Buku", reset,
+                green, "Jumlah", reset,
+                green, "Total", reset,
+                green, "Waktu", reset);
+            System.out.println("+------------+----------+------------------------------------------+--------+----------------+---------------------+");
             for (Transaction transaction : transactions) {
-                System.out.println(transaction.formatForList());
+                System.out.println(formatTransactionForTable(transaction));
             }
+            System.out.println("+------------+----------+------------------------------------------+--------+----------------+---------------------+");
         }
         pause();
+    }
+
+    private String formatTransactionForTable(Transaction transaction) {
+        String title = transaction.getBookTitle();
+        String formattedTitle = title.length() > 40 ? title.substring(0, 37) + "..." : title;
+        String formattedDate = transaction.getCreatedAt().format(
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        return String.format("| %-10s | %-8s | %-40s | %-6d | %-14s | %-19s |",
+            transaction.getId(),
+            transaction.getBookId(),
+            formattedTitle,
+            transaction.getQuantity(),
+            formatRupiah(transaction.getTotalPrice()),
+            formattedDate);
     }
 
     private Book findBookById(String id) {
@@ -181,6 +277,102 @@ public class SmartBookApp {
         return null;
     }
 
+    private String readTitle(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String text = scanner.nextLine().trim();
+            if (text.isEmpty()) {
+                System.out.println("Judul tidak boleh kosong, coba lagi.");
+            } else if (text.length() > 60) {
+                System.out.println("Judul tidak boleh lebih dari 60 karakter, coba lagi.");
+            } else if (!isValidASCII(text)) {
+                System.out.println("Judul hanya boleh mengandung karakter ASCII (huruf, angka, spasi, dan tanda baca umum), coba lagi.");
+            } else {
+                return text;
+            }
+        }
+    }
+
+    private String readCategory(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String text = scanner.nextLine().trim();
+            if (text.isEmpty()) {
+                System.out.println("Kategori tidak boleh kosong, coba lagi.");
+            } else if (!isValidASCII(text)) {
+                System.out.println("Kategori hanya boleh mengandung karakter ASCII (huruf, angka, spasi, dan tanda baca umum), coba lagi.");
+            } else {
+                String[] words = text.split("\\s+");
+                if (words.length < 1 || words.length > 4) {
+                    System.out.println("Kategori harus terdiri dari 1-4 kata, coba lagi.");
+                } else {
+                    return capitalizeWords(text);
+                }
+            }
+        }
+    }
+
+    private boolean isValidASCII(String text) {
+        for (char c : text.toCharArray()) {
+            if (c < 32 || c > 126) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String capitalizeWords(String text) {
+        String[] words = text.split("\\s+");
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) {
+                result.append(" ");
+            }
+            String word = words[i];
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)));
+                if (word.length() > 1) {
+                    result.append(word.substring(1).toLowerCase());
+                }
+            }
+        }
+        return result.toString();
+    }
+
+    private String formatRupiah(double amount) {
+        long value = (long) amount;
+        String numStr = String.valueOf(value);
+        StringBuilder formatted = new StringBuilder();
+        int count = 0;
+        for (int i = numStr.length() - 1; i >= 0; i--) {
+            if (count > 0 && count % 3 == 0) {
+                formatted.insert(0, '.');
+            }
+            formatted.insert(0, numStr.charAt(i));
+            count++;
+        }
+        return "Rp " + formatted.toString();
+    }
+
+    private double readDouble(String prompt, double min, double max) {
+        while (true) {
+            System.out.print(prompt);
+            String raw = scanner.nextLine();
+            try {
+                double number = Double.parseDouble(raw.trim());
+                if (number < min) {
+                    System.out.printf("Masukkan nilai minimal %.0f.%n", min);
+                } else if (number > max) {
+                    System.out.printf("Masukkan nilai maksimal %.0f.%n", max);
+                } else {
+                    return number;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Input tidak valid, coba lagi.");
+            }
+        }
+    }
+
     private String readNonEmpty(String prompt) {
         while (true) {
             System.out.print(prompt);
@@ -189,23 +381,6 @@ public class SmartBookApp {
                 System.out.println("Input tidak boleh kosong, coba lagi.");
             } else {
                 return text;
-            }
-        }
-    }
-
-    private double readDouble(String prompt, double min) {
-        while (true) {
-            System.out.print(prompt);
-            String raw = scanner.nextLine();
-            try {
-                double number = Double.parseDouble(raw.trim());
-                if (number < min) {
-                    System.out.printf("Masukkan nilai minimal %.0f.%n", min);
-                } else {
-                    return number;
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Input tidak valid, coba lagi.");
             }
         }
     }

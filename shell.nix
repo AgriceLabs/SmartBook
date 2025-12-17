@@ -1,6 +1,4 @@
-{
-  pkgs ? import <nixpkgs> {},
-}:
+{ pkgs ? import <nixpkgs> {} }:
 
 pkgs.mkShell {
   name = "SmartBook Java";
@@ -8,8 +6,4 @@ pkgs.mkShell {
     javaPackages.compiler.openjdk21
     gradle
   ];
-  shellHook = ''
-    echo "Starting Gradle..."
-    gradle run
-  '';
 }
