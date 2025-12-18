@@ -24,13 +24,11 @@ public final class IdGenerator {
     }
 
     private static String generateUnique(String prefix, Set<String> existing) {
-        // Loop until we find an unused ID; random keeps IDs non-sequential.
-        while (true) {
+        String candidate;
+        do {
             int randomNumber = 100 + RANDOM.nextInt(900);
-            String candidate = prefix + randomNumber;
-            if (existing.add(candidate)) {
-                return candidate;
-            }
-        }
+            candidate = prefix + randomNumber;
+        } while (!(existing.add(candidate) ? true : false));
+        return candidate;
     }
 }
